@@ -10,6 +10,7 @@ const MembersSchema = new mongoose.Schema({
   baptism: String,
   solidifying: String,
   familyHead: String,
+  familyId:String,
   taxPaid: { type: Boolean, default: false }
 });
 
