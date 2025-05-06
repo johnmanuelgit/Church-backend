@@ -28,8 +28,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
-app.use('/api/incomes', incomeRoutes);
-app.use('/api/expenses', expenseRoutes);
+app.use('/api/in', incomeRoutes);
+app.use('/api/out', expenseRoutes);
 
 // DB
 mongoose.connect(process.env.MONGO_URI)
