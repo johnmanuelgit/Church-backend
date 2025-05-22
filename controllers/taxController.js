@@ -1,137 +1,148 @@
 const TaxRecord = require('../models/TaxRecord');
-const Member = require('../models/member.model'); // Ensure correct path
-const mongoose = require('mongoose');
+const Member = require('../models/member.model');
 
-// Calculate default tax amount based on age
-function calculateDefaultTax(dateOfBirth) {
-  if (!dateOfBirth) return 1000; // Default if no DOB
-  
-  const birthDate = new Date(dateOfBirth);
-  const today = new Date();
-  const age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  const adjustedAge = m < 0 || (m === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-  
-  return adjustedAge < 18 ? 500 : 1000;
-}
-
-exports.markAsPaid = async (req, res) => {
+// Enhanced markTaxPaid function
+exports.markTaxPaid = async (req, res) => {
   try {
     const { memberId, year, amount } = req.body;
-    const numericYear = Number(year);
 
-    const objectId = new mongoose.Types.ObjectId(memberId);
-    let record = await TaxRecord.findOne({ memberId: objectId, year: numericYear });
-
-    if (!record) {
-      // Get member's DOB to calculate default amount if not provided
-      let taxAmount = amount;
-      if (!taxAmount) {
-        const member = await Member.findById(objectId);
-        taxAmount = calculateDefaultTax(member?.dateOfBirth);
-      }
-      
-      record = new TaxRecord({
-        memberId: objectId,
-        year: numericYear,
-        taxPaid: true,
-        amount: taxAmount,
-        lastUpdated: new Date()
-      });
-    } else {
-      record.taxPaid = true;
-      if (amount) record.amount = amount;
-      record.lastUpdated = new Date();
+    // Validate input
+    if (!memberId || !year || amount === undefined) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    await record.save();
-    res.json({ message: 'Marked as paid', record });
+    const taxRecord = await TaxRecord.findOneAndUpdate(
+      { memberId, year },
+      { 
+        taxPaid: true,
+        amount: amount,
+        paymentDate: new Date(),
+        lastUpdated: new Date()
+      },
+      { upsert: true, new: true, runValidators: true }
+    ).populate('memberId');
+
+    res.status(200).json(taxRecord);
   } catch (error) {
-    console.error('Error in markAsPaid:', error);
-    res.status(500).json({ error: 'Failed to mark as paid', details: error.message });
+    console.error('Error marking tax as paid:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-exports.markAsUnpaid = async (req, res) => {
+// Enhanced markTaxUnpaid function
+exports.markTaxUnpaid = async (req, res) => {
   try {
     const { memberId, year } = req.body;
-    const numericYear = Number(year);
-    const objectId = memberId instanceof mongoose.Types.ObjectId ? memberId : new mongoose.Types.ObjectId(memberId);
 
-    const record = await TaxRecord.findOne({ memberId: objectId, year: numericYear });
-
-    if (!record) {
-      return res.status(404).json({ error: 'Tax record not found' });
+    if (!memberId || !year) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    record.taxPaid = false;
-    record.lastUpdated = new Date();
-    await record.save();
-    res.json({ message: 'Marked as unpaid', record });
+    const taxRecord = await TaxRecord.findOneAndUpdate(
+      { memberId, year },
+      { 
+        taxPaid: false,
+        paymentDate: null,
+        lastUpdated: new Date()
+      },
+      { new: true, runValidators: true }
+    ).populate('memberId');
+
+    if (!taxRecord) {
+      return res.status(404).json({ message: 'Tax record not found' });
+    }
+
+    res.status(200).json(taxRecord);
   } catch (error) {
-    console.error('Error in markAsUnpaid:', error);
-    res.status(500).json({ error: 'Failed to mark as unpaid', details: error.message });
+    console.error('Error marking tax as unpaid:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// New endpoint to update tax amount
+// Enhanced updateTaxAmount function
 exports.updateTaxAmount = async (req, res) => {
   try {
     const { memberId, year, amount, taxPaid } = req.body;
-    const numericYear = Number(year);
-    const numericAmount = Number(amount);
-    
-    if (isNaN(numericAmount) || numericAmount < 0) {
-      return res.status(400).json({ error: 'Invalid tax amount' });
+
+    if (!memberId || !year || amount === undefined) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const objectId = new mongoose.Types.ObjectId(memberId);
-    let record = await TaxRecord.findOne({ memberId: objectId, year: numericYear });
+    const updateData = {
+      amount,
+      lastUpdated: new Date()
+    };
 
-    if (!record) {
-      record = new TaxRecord({
-        memberId: objectId,
-        year: numericYear,
-        taxPaid: !!taxPaid,
-        amount: numericAmount,
-        lastUpdated: new Date()
-      });
-    } else {
-      record.amount = numericAmount;
-      if (taxPaid !== undefined) record.taxPaid = taxPaid;
-      record.lastUpdated = new Date();
+    if (taxPaid !== undefined) {
+      updateData.taxPaid = taxPaid;
+      updateData.paymentDate = taxPaid ? new Date() : null;
     }
 
-    await record.save();
-    res.json({ message: 'Tax amount updated', record });
+    const taxRecord = await TaxRecord.findOneAndUpdate(
+      { memberId, year },
+      updateData,
+      { upsert: true, new: true, runValidators: true }
+    ).populate('memberId');
+
+    res.status(200).json(taxRecord);
   } catch (error) {
     console.error('Error updating tax amount:', error);
-    res.status(500).json({ error: 'Failed to update tax amount', details: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-exports.getAllTaxRecords = async (req, res) => {
+// Tax configuration function
+exports.updateTaxConfig = async (req, res) => {
   try {
-    const records = await TaxRecord.find().populate('memberId', 'name dateOfBirth');
-    res.json(records);
+    const { year } = req.params;
+    const { config } = req.body;
+
+    if (!year || !config) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Validate config structure
+    if (!config.adult || !config.child || !config.adultAge) {
+      return res.status(400).json({ message: 'Invalid config structure' });
+    }
+
+    // Here you would typically save to a TaxConfig model
+    // For now we'll just return the config
+    res.status(200).json({
+      year: parseInt(year),
+      config,
+      updatedAt: new Date()
+    });
   } catch (error) {
-    console.error('Error fetching tax records:', error);
-    res.status(500).json({ error: 'Failed to load tax records' });
+    console.error('Error updating tax config:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// Get tax records for a specific member
 exports.getMemberTaxRecords = async (req, res) => {
   try {
     const { memberId } = req.params;
-    const objectId = new mongoose.Types.ObjectId(memberId);
-    const records = await TaxRecord.find({ memberId: objectId }).sort({ year: 1 });
-    res.json(records);
+    const taxRecords = await TaxRecord.find({ memberId }).populate('memberId');
+    res.status(200).json(taxRecords);
   } catch (error) {
-    console.error('Error fetching member tax records:', error);
-    res.status(500).json({ error: 'Failed to load member tax records' });
+    console.error('Error getting member tax records:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
+// Get all tax records
+exports.getAllTaxRecords = async (req, res) => {
+  try {
+    const taxRecords = await TaxRecord.find().populate('memberId');
+    res.status(200).json(taxRecords);
+  } catch (error) {
+    console.error('Error getting all tax records:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get tax summary
 exports.getTaxSummary = async (req, res) => {
   try {
     const summary = await TaxRecord.aggregate([
@@ -139,14 +150,9 @@ exports.getTaxSummary = async (req, res) => {
         $group: {
           _id: "$year",
           total: { $sum: "$amount" },
-          paid: {
+          paid: { 
             $sum: {
               $cond: [{ $eq: ["$taxPaid", true] }, "$amount", 0]
-            }
-          },
-          unpaid: {
-            $sum: {
-              $cond: [{ $eq: ["$taxPaid", false] }, "$amount", 0]
             }
           },
           count: { $sum: 1 },
@@ -162,18 +168,72 @@ exports.getTaxSummary = async (req, res) => {
           year: "$_id",
           total: 1,
           paid: 1,
-          unpaid: 1,
+          unpaid: { $subtract: ["$total", "$paid"] },
           count: 1,
           paidCount: 1,
           _id: 0
         }
       },
-      { $sort: { year: 1 } }
+      { $sort: { year: -1 } }
     ]);
 
-    res.json(summary);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error', details: err.message });
+    res.status(200).json(summary);
+  } catch (error) {
+    console.error('Error getting tax summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get tax configuration for a specific year
+exports.getTaxConfig = async (req, res) => {
+  try {
+    const { year } = req.params;
+    
+    // This would typically come from your database
+    // For now, returning a default config
+    const defaultConfig = {
+      adult: 1000,
+      child: 500,
+      adultAge: 18,
+      seniorAge: 60,
+      seniorDiscount: 10
+    };
+    
+    res.status(200).json({
+      year: parseInt(year),
+      config: defaultConfig
+    });
+  } catch (error) {
+    console.error('Error getting tax config:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get tax records by year
+exports.getTaxRecordsByYear = async (req, res) => {
+  try {
+    const { year } = req.params;
+    const taxRecords = await TaxRecord.find({ year }).populate('memberId');
+    res.status(200).json(taxRecords);
+  } catch (error) {
+    console.error('Error getting tax records by year:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete tax record
+exports.deleteTaxRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedRecord = await TaxRecord.findByIdAndDelete(id);
+    
+    if (!deletedRecord) {
+      return res.status(404).json({ message: 'Tax record not found' });
+    }
+    
+    res.status(200).json({ message: 'Tax record deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting tax record:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
