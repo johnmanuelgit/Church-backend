@@ -12,6 +12,7 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const initAdmin = require('./utils/initAdmin');
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -34,6 +35,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/tax', taxRoutes);
 app.use('/api/in', incomeRoutes);
 app.use('/api/out', expenseRoutes);
+app.use('/api/tax', taxRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
