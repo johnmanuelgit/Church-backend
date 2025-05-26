@@ -433,7 +433,7 @@ exports.updatePaymentStatus = async (req, res) => {
 // Get family heads for dropdown
 exports.getFamilyHeads = async (req, res) => {
   try {
-    const familyHeads = await Member.find({ isFamilyHead: true })
+    const familyHeads = await Member.find({ isHeadOfFamily: true })
       .select('_id name familyId')
       .sort({ name: 1 });
 
@@ -558,5 +558,48 @@ exports.exportAllYearsReport = async (req, res) => {
   } catch (error) {
     console.error('Error exporting all years tax report:', error);
     res.status(500).json({ message: 'Error exporting all years tax report', error: error.message });
+  }
+};
+
+// Get all members (for all years view)
+exports.getAllMembers = async (req, res) => {
+  try {
+    const { familyId } = req.query;
+    
+    const filter = {};
+    if (familyId) {
+      filter.familyId = familyId;
+    }
+    
+    const members = await Member.find(filter)
+      .select('_id name dateOfBirth familyId isHeadOfFamily')
+      .sort({ name: 1 });
+    
+    res.status(200).json(members);
+  } catch (error) {
+    console.error('Error fetching all members:', error);
+    res.status(500).json({ message: 'Error fetching all members', error: error.message });
+  }
+};
+
+// Get member payment for specific year
+exports.getMemberPaymentForYear = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const { year } = req.query;
+    
+    const payment = await TaxPayment.findOne({ 
+      memberId, 
+      year: parseInt(year) 
+    });
+    
+    if (!payment) {
+      return res.status(200).json([]);
+    }
+    
+    res.status(200).json([payment]);
+  } catch (error) {
+    console.error('Error fetching member payment for year:', error);
+    res.status(500).json({ message: 'Error fetching member payment', error: error.message });
   }
 };
