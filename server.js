@@ -11,11 +11,21 @@ const taxRoutes = require('./routes/taxRoutes');
 const incomeRoutes = require('./routes/incomeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const initAdmin = require('./utils/initAdmin');
-
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.use(
+  session({
+    secret: 'yourSecretKey', // Replace with a strong secret
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // true if using https
+      maxAge: 1000 * 60 * 60 * 24 // 1 day
+    }
+  })
+);
 // Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {

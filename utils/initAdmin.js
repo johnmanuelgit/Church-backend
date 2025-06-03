@@ -2,11 +2,31 @@ const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 
 const initAdmin = async () => {
-  const admin = await Admin.findOne({ username: 'john' });
-  if (!admin) {
-    const hashed = await bcrypt.hash('john01', 10);
-    await new Admin({ username: 'admin', email: 'sjohnmanuelpc@gmail.com', password: hashed }).save();
-    console.log('Default admin created');
+  try {
+    const existingAdmin = await Admin.findOne({ username: 'admin' });
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash('john01', 10);
+      const defaultAdmin = new Admin({
+        username: 'admin',
+        email: 'sjohnmanuelpc@gmail.com',
+        password: hashedPassword,
+        role: 'superadmin',
+        isActive: true,
+        moduleAccess: {
+          lcf: true,
+          incomeExpense: true,
+          members: true,
+          user: true,
+        },
+      });
+
+      await defaultAdmin.save();
+      console.log('✅ Default superadmin created.');
+    } else {
+      console.log('ℹ️ Default superadmin already exists.');
+    }
+  } catch (err) {
+    console.error('❌ Error creating default admin:', err);
   }
 };
 
