@@ -8,7 +8,7 @@ router.post('/forgot-password', adminController.forgotPassword);
 router.post('/reset-password', adminController.resetPassword);
 router.post('/logout', adminController.logout);
 
-router.post('/userAdminlogin', adminController.userAdminlogin);
+
 router.get('/superadmin/admins', adminController.listAdmins);
 router.post('/superadmin/create-admin', adminController.createAdmin);
 router.put('/superadmin/edit-admin/:id', adminController.updateAdmin);

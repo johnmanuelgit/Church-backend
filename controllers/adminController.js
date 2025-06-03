@@ -164,34 +164,4 @@ exports.deleteAdmin = async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 
-  exports.userAdminlogin = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    console.log('Login attempt:', { username, password });
-
-    const admin = await Admin.findOne({ username });
-    console.log('Admin found:', admin);
-
-    if (!admin || !(await bcrypt.compare(password, admin.password))) {
-      return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
-    }
-
-    if (!admin.isActive) {
-      return res.status(403).json({ status: 'error', message: 'Account is inactive' });
-    }
-
-    req.session.admin = {
-      id: admin._id,
-      username: admin.username,
-      role: admin.role,
-      moduleAccess: admin.moduleAccess
-    };
-
-    return res.json({ status: 'success', message: 'Login successful', user: req.session.admin });
-  } catch (err) {
-    console.error('Login error:', err); // <- This should print the exact error
-    return res.status(500).json({ status: 'error', message: 'Server error' });
-  }
-};
-
 };
