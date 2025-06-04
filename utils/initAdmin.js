@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 
 const initAdmin = async () => {
   try {
-    const existingAdmin = await Admin.findOne({ username: 'admin' });
+    const existingAdmin = await Admin.findOne({ username: 'john' });
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash('john01', 10);
       const defaultAdmin = new Admin({
-        username: 'admin',
+        username: 'john',
         email: 'sjohnmanuelpc@gmail.com',
         password: hashedPassword,
         role: 'superadmin',

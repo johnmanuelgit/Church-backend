@@ -2,7 +2,7 @@ const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-// In adminController.js - Update both login functions
+
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -19,7 +19,7 @@ exports.login = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Account is inactive' });
     }
 
-    // Add token generation for consistency
+
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { 
