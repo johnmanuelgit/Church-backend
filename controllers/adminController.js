@@ -2,6 +2,7 @@ const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// In adminController.js - Update both login functions
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -18,6 +19,18 @@ exports.login = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Account is inactive' });
     }
 
+    // Add token generation for consistency
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: admin._id, 
+        username: admin.username, 
+        role: admin.role 
+      }, 
+      process.env.JWT_SECRET || 'your-secret-key', 
+      { expiresIn: '24h' }
+    );
+
     req.session.admin = {
       id: admin._id,
       username: admin.username,
@@ -25,13 +38,17 @@ exports.login = async (req, res) => {
       moduleAccess: admin.moduleAccess
     };
 
-    return res.json({ status: 'success', message: 'Login successful', user: req.session.admin });
+    return res.json({ 
+      status: 'success', 
+      message: 'Login successful', 
+      token: token,
+      user: req.session.admin 
+    });
   } catch (err) {
-    console.error('Login error:', err); // <- This should print the exact error
+    console.error('Login error:', err);
     return res.status(500).json({ status: 'error', message: 'Server error' });
   }
 };
-
 
 exports.logout = (req, res) => {
   req.session.destroy(err => {
@@ -164,4 +181,52 @@ exports.deleteAdmin = async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 
+};
+
+// In adminController.js - Update userAdminlogin
+exports.userAdminlogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('Login attempt:', { email, password });
+
+    const admin = await Admin.findOne({ email });
+    console.log('Admin found:', admin);
+
+    if (!admin || !(await bcrypt.compare(password, admin.password))) {
+      return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+    }
+
+    if (!admin.isActive) {
+      return res.status(403).json({ status: 'error', message: 'Account is inactive' });
+    }
+
+    // Add token generation (you'll need jwt)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: admin._id, 
+        username: admin.username, 
+        role: admin.role 
+      }, 
+      process.env.JWT_SECRET || 'your-secret-key', 
+      { expiresIn: '24h' }
+    );
+
+    req.session.admin = {
+      id: admin._id,
+      username: admin.username,
+      role: admin.role,
+      moduleAccess: admin.moduleAccess
+    };
+
+    return res.json({ 
+      status: 'success', 
+      message: 'Login successful', 
+      token: token,  // Add this
+      user: req.session.admin 
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ status: 'error', message: 'Server error' });
+  }
 };
