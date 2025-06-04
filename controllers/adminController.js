@@ -1,16 +1,7 @@
 const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer'); // You'll need to install this: npm install nodemailer
 
-// Configure email transporter (you'll need to set up your email service)
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // or your email service
-  auth: {
-    user: process.env.EMAIL_USER, // your email
-    pass: process.env.EMAIL_PASS  // your email password or app password
-  }
-});
 
 exports.login = async (req, res) => {
   try {
@@ -27,6 +18,7 @@ exports.login = async (req, res) => {
     if (!admin.isActive) {
       return res.status(403).json({ status: 'error', message: 'Account is inactive' });
     }
+
 
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
@@ -69,121 +61,36 @@ exports.logout = (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Email is required' 
-      });
-    }
-
     const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(404).json({ 
-        status: 'error', 
-        message: 'No account found with this email address' 
-      });
-    }
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
-    // Generate reset token
     const token = crypto.randomBytes(32).toString('hex');
     admin.resetToken = token;
-    admin.resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
+    admin.resetTokenExpiry = Date.now() + 3600000; // 1 hour
     await admin.save();
 
-    // Create reset URL (adjust this to match your frontend URL)
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/admin/reset-password?token=${token}`;
-
-    // Email options
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Password Reset Request - Admin Portal',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4f46e5;">Password Reset Request</h2>
-          <p>Hello,</p>
-          <p>You have requested to reset your password for the Admin Portal. Click the button below to reset your password:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Reset Password
-            </a>
-          </div>
-          <p>Or copy and paste this link in your browser:</p>
-          <p style="word-break: break-all; color: #4f46e5;">${resetUrl}</p>
-          <p>This link will expire in 1 hour for security reasons.</p>
-          <p>If you didn't request this password reset, please ignore this email.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-          <p style="color: #666; font-size: 12px;">© 2025 Admin Portal. All rights reserved.</p>
-        </div>
-      `
-    };
-
-    // Send email
-    await transporter.sendMail(mailOptions);
-
-    return res.json({ 
-      status: 'success',
-      message: 'Password reset instructions have been sent to your email address' 
-    });
-
+    return res.json({ message: 'Reset token generated', token });
   } catch (err) {
     console.error('Forgot password error:', err);
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Failed to send reset email. Please try again later.' 
-    });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
 exports.resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-    
-    if (!token || !newPassword) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Token and new password are required' 
-      });
-    }
+    const admin = await Admin.findOne({ resetToken: token, resetTokenExpiry: { $gt: Date.now() } });
+    if (!admin) return res.status(400).json({ message: 'Invalid or expired token' });
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Password must be at least 6 characters long' 
-      });
-    }
-
-    const admin = await Admin.findOne({ 
-      resetToken: token, 
-      resetTokenExpiry: { $gt: Date.now() } 
-    });
-
-    if (!admin) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Invalid or expired reset token' 
-      });
-    }
-
-    // Hash new password
     admin.password = await bcrypt.hash(newPassword, 10);
     admin.resetToken = undefined;
     admin.resetTokenExpiry = undefined;
     await admin.save();
 
-    return res.json({ 
-      status: 'success',
-      message: 'Password has been reset successfully. You can now login with your new password.' 
-    });
-
+    return res.json({ message: 'Password reset successful' });
   } catch (err) {
     console.error('Reset password error:', err);
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Server error occurred while resetting password' 
-    });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -196,7 +103,7 @@ exports.isAuthenticated = (req, res, next) => {
 // Superadmin CRUD
 exports.listAdmins = async (req, res) => {
   try {
-    const admins = await Admin.find({ role: 'admin' }).select('-password -resetToken -resetTokenExpiry');
+    const admins = await Admin.find({ role: 'admin' });
     return res.json(admins);
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
@@ -240,14 +147,7 @@ exports.createAdmin = async (req, res) => {
     });
 
     await newAdmin.save();
-    
-    // Remove password from response
-    const { password: _, ...adminResponse } = newAdmin.toObject();
-    
-    return res.status(201).json({ 
-      message: 'Admin created successfully', 
-      admin: adminResponse 
-    });
+    return res.status(201).json({ message: 'Admin created successfully', admin: newAdmin });
 
   } catch (err) {
     console.error('Create admin error:', err);
@@ -263,10 +163,10 @@ exports.updateAdmin = async (req, res) => {
       email,
       moduleAccess,
       isActive
-    }, { new: true }).select('-password -resetToken -resetTokenExpiry');
+    }, { new: true });
 
     if (!updated) return res.status(404).json({ message: 'Admin not found' });
-    return res.json({ message: 'Admin updated successfully', admin: updated });
+    return res.json({ message: 'Admin updated successfully' });
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -280,13 +180,14 @@ exports.deleteAdmin = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }
+
 };
 
-// User admin login
+// In adminController.js - Update userAdminlogin
 exports.userAdminlogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('User login attempt:', { email, password });
+    console.log('Login attempt:', { email, password });
 
     const admin = await Admin.findOne({ email });
     console.log('Admin found:', admin);
@@ -299,6 +200,7 @@ exports.userAdminlogin = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Account is inactive' });
     }
 
+    // Add token generation (you'll need jwt)
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { 
@@ -320,11 +222,11 @@ exports.userAdminlogin = async (req, res) => {
     return res.json({ 
       status: 'success', 
       message: 'Login successful', 
-      token: token,
+      token: token,  // Add this
       user: req.session.admin 
     });
   } catch (err) {
-    console.error('User login error:', err);
+    console.error('Login error:', err);
     return res.status(500).json({ status: 'error', message: 'Server error' });
   }
 };
