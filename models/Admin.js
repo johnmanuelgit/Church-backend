@@ -28,7 +28,7 @@ const AdminSchema = new mongoose.Schema({
   },
   moduleAccess: {
     lcf: { type: Boolean, default: false },
-    incomeExpense: { type: Boolean, default:false },
+    incomeExpense: { type: Boolean, default: false },
     members: { type: Boolean, default: false },
     user: { type: Boolean, default: false },
   },

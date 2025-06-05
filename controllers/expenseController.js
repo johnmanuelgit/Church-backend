@@ -26,7 +26,7 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-exports.upload = multer({ 
+exports.upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
@@ -35,12 +35,12 @@ exports.upload = multer({
 exports.getAllExpenses = async (req, res) => {
   try {
     let query = {};
-    
+
     // Filter by year if provided
     if (req.query.year) {
       query.year = parseInt(req.query.year);
     }
-    
+
     const expenses = await Expense.find(query).sort({ date: -1 });
     res.json(expenses);
   } catch (error) {
@@ -55,15 +55,15 @@ exports.createExpense = async (req, res) => {
       amount: parseFloat(req.body.amount),
       year: parseInt(req.body.year)
     };
-    
+
     // Add bill image path if available
     if (req.file) {
       expenseData.billImage = `/uploads/${req.file.filename}`;
     }
-    
+
     const newExpense = new Expense(expenseData);
     await newExpense.save();
-    
+
     res.status(201).json({ message: 'Expense saved successfully!', expense: newExpense });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -73,11 +73,11 @@ exports.createExpense = async (req, res) => {
 exports.getExpenseById = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-    
+
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
-    
+
     res.json(expense);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -91,7 +91,7 @@ exports.updateExpense = async (req, res) => {
       amount: parseFloat(req.body.amount),
       year: parseInt(req.body.year)
     };
-    
+
     // Add bill image path if new file uploaded
     if (req.file) {
       // Delete old image if exists
@@ -104,17 +104,17 @@ exports.updateExpense = async (req, res) => {
       }
       expenseData.billImage = `/uploads/${req.file.filename}`;
     }
-    
+
     const updatedExpense = await Expense.findByIdAndUpdate(
       req.params.id,
       expenseData,
       { new: true, runValidators: true }
     );
-    
+
     if (!updatedExpense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
-    
+
     res.json({ message: 'Expense updated successfully!', expense: updatedExpense });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -124,11 +124,11 @@ exports.updateExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-    
+
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
-    
+
     // Delete associated bill image if exists
     if (expense.billImage) {
       const imagePath = path.join(__dirname, '..', expense.billImage);
@@ -136,7 +136,7 @@ exports.deleteExpense = async (req, res) => {
         fs.unlinkSync(imagePath);
       }
     }
-    
+
     await Expense.findByIdAndDelete(req.params.id);
     res.json({ message: 'Expense deleted successfully!' });
   } catch (error) {
@@ -148,7 +148,7 @@ exports.searchExpenses = async (req, res) => {
   try {
     const searchTerm = req.query.term;
     let query = {};
-    
+
     // Add search regex for reason or responsible person
     if (searchTerm) {
       query.$or = [
@@ -156,12 +156,12 @@ exports.searchExpenses = async (req, res) => {
         { responsiblePerson: { $regex: searchTerm, $options: 'i' } }
       ];
     }
-    
+
     // Add year filter if provided
     if (req.query.year) {
       query.year = parseInt(req.query.year);
     }
-    
+
     const expenses = await Expense.find(query).sort({ date: -1 });
     res.json(expenses);
   } catch (error) {

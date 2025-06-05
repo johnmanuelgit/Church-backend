@@ -101,11 +101,11 @@ exports.deleteMember = async (req, res) => {
 
     // If this is a family head, check for dependent members
     if (member.isHeadOfFamily) {
-      const dependentMembers = await Member.countDocuments({ 
-        familyId: member.familyId, 
-        isHeadOfFamily: false 
+      const dependentMembers = await Member.countDocuments({
+        familyId: member.familyId,
+        isHeadOfFamily: false
       });
-      
+
       if (dependentMembers > 0) {
         return res.status(400).json({
           message: 'Cannot delete a family head with dependent members. Please reassign or delete dependent members first.'
