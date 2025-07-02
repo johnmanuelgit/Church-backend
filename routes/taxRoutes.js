@@ -27,7 +27,6 @@ router.put('/payment/:paymentId', taxController.updatePaymentStatus);
 // Export Routes
 router.get('/export', taxController.exportTaxReport);
 router.get('/export/all-years', taxController.exportAllYearsReport);
-
 // Utility Routes
 router.get('/family-heads', taxController.getFamilyHeads);
 router.get('/years', taxController.getAvailableYears);

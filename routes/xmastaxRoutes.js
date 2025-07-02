@@ -12,7 +12,6 @@ router.post('/generate/:year', taxController.generateTaxPayments);
 // Tax Summary Routes
 router.get('/summary', taxController.getTaxSummary);
 router.get('/summary/all-years', taxController.getAllYearsSummary);
-
 // Tax Details Routes
 router.get('/details', taxController.getMemberTaxDetails);
 router.get('/details/all-years', taxController.getAllYearsMemberDetails);
