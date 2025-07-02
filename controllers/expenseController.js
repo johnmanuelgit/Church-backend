@@ -6,8 +6,7 @@ const fs = require('fs');
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
-    // Create directory if it doesn't exist
+    const uploadDir = path.join(__dirname, '../public/uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -19,9 +18,8 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept images only
-  if (!file.originalname.match(/\.(jpg|jpeg|png|gif|pdf)$/)) {
-    return cb(new Error('Only image and PDF files are allowed!'), false);
+  if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+    return cb(new Error('Only image files are allowed!'), false);
   }
   cb(null, true);
 };
@@ -29,18 +27,15 @@ const fileFilter = (req, file, cb) => {
 exports.upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }
 }).single('billImage');
 
 exports.getAllExpenses = async (req, res) => {
   try {
     let query = {};
-
-    // Filter by year if provided
     if (req.query.year) {
       query.year = parseInt(req.query.year);
     }
-
     const expenses = await Expense.find(query).sort({ date: -1 });
     res.json(expenses);
   } catch (error) {
@@ -56,7 +51,6 @@ exports.createExpense = async (req, res) => {
       year: parseInt(req.body.year)
     };
 
-    // Add bill image path if available
     if (req.file) {
       expenseData.billImage = `/uploads/${req.file.filename}`;
     }
@@ -73,11 +67,9 @@ exports.createExpense = async (req, res) => {
 exports.getExpenseById = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
-
     res.json(expense);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -92,12 +84,10 @@ exports.updateExpense = async (req, res) => {
       year: parseInt(req.body.year)
     };
 
-    // Add bill image path if new file uploaded
     if (req.file) {
-      // Delete old image if exists
       const oldExpense = await Expense.findById(req.params.id);
       if (oldExpense && oldExpense.billImage) {
-        const oldImagePath = path.join(__dirname, '..', oldExpense.billImage);
+        const oldImagePath = path.join(__dirname, '../public', oldExpense.billImage);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
         }
@@ -105,12 +95,7 @@ exports.updateExpense = async (req, res) => {
       expenseData.billImage = `/uploads/${req.file.filename}`;
     }
 
-    const updatedExpense = await Expense.findByIdAndUpdate(
-      req.params.id,
-      expenseData,
-      { new: true, runValidators: true }
-    );
-
+    const updatedExpense = await Expense.findByIdAndUpdate(req.params.id, expenseData, { new: true, runValidators: true });
     if (!updatedExpense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
@@ -124,14 +109,12 @@ exports.updateExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    // Delete associated bill image if exists
     if (expense.billImage) {
-      const imagePath = path.join(__dirname, '..', expense.billImage);
+      const imagePath = path.join(__dirname, '../public', expense.billImage);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
       }
@@ -149,15 +132,12 @@ exports.searchExpenses = async (req, res) => {
     const searchTerm = req.query.term;
     let query = {};
 
-    // Add search regex for reason or responsible person
     if (searchTerm) {
       query.$or = [
         { reason: { $regex: searchTerm, $options: 'i' } },
         { responsiblePerson: { $regex: searchTerm, $options: 'i' } }
       ];
     }
-
-    // Add year filter if provided
     if (req.query.year) {
       query.year = parseInt(req.query.year);
     }
