@@ -31,6 +31,7 @@ const AdminSchema = new mongoose.Schema({
     incomeExpense: { type: Boolean, default: false },
     members: { type: Boolean, default: false },
     user: { type: Boolean, default: false },
+    xmas:{type:Boolean,default:false}
   },
   resetToken: String,
   resetTokenExpiry: Date,
