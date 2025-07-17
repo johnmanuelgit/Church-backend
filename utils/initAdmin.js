@@ -17,16 +17,17 @@ const initAdmin = async () => {
           incomeExpense: true,
           members: true,
           user: true,
+          xmas:true,
         },
       });
 
       await defaultAdmin.save();
-      console.log('✅ Default superadmin created.');
+      console.log('Default superadmin created.');
     } else {
-      console.log('ℹ️ Default superadmin already exists.');
+      console.log('ℹDefault superadmin already exists.');
     }
   } catch (err) {
-    console.error('❌ Error creating default admin:', err);
+    console.error(' Error creating default admin:', err);
   }
 };
 
