@@ -1,3 +1,2 @@
 # stthomoschurch-backend
-"# backend" 
-"# backend" 
+"# church-backend-nodejs" 
