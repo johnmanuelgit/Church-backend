@@ -15,13 +15,23 @@ const xmastaxRoutes = require('./routes/xmastaxRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1); // ✅ Required to make secure cookies work behind proxy (Railway)
 
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL, // ✅ your frontend
-  credentials: true                                 // ✅ allow session cookies
-}));
+app.use(
+  session({
+    secret: 'yourSecretKey',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,       // ✅ must be true when using HTTPS
+      sameSite: 'none',   // ✅ allow cookies across domains
+      maxAge: 1000 * 60 * 60 * 24
+    }
+  })
+);
+
 app.use(
   session({
     secret: 'yourSecretKey',
