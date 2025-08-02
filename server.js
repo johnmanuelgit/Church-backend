@@ -15,6 +15,13 @@ const xmastaxRoutes = require('./routes/xmastaxRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL, // ✅ your frontend
+  credentials: true                                 // ✅ allow session cookies
+}));
 app.use(
   session({
     secret: 'yourSecretKey',
@@ -26,12 +33,6 @@ app.use(
     }
   })
 );
-
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL, // ✅ your frontend
-  credentials: true                                 // ✅ allow session cookies
-}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
